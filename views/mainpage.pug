@@ -2,32 +2,42 @@ extend layout
 
 block content
     include navbar
-    section.todo         
-        h2 To-do list
-        .input
-            input.input-field(type="date", id="todoDate") 
+    .main-container
+        section.todo         
+            h2 To-do list
+            .input
+                input.input-field(type="date", id="todoDate") 
 
-            input.input-field#todoInput(type="text", placeholder="Add a new todo")
-            button.btnAdd Add
-        .headerName 
-            h3#todoName TO-DO 
-            h3#deadline DEADLINE
-            button#sortDate Sort DATE
+                input.input-field#todoInput(type="text", placeholder="Add a new todo")
+                button.btnAdd Add
+            .headerName 
+                h3#todoName TO-DO 
+                h3#deadline DEADLINE
+                button#sortDate Sort Date
+                
+            ul.scroll
+                li#todoList
+            div
+                hr.counter
+                .counter-container
+                    .dropdown
+                            button.dropbtn Filter
+                            .dropdown-content
+                                a(href="#" id="all") All
+                                a(href="#" id="pending") Pending
+                                a(href="#" id="completed") Completed
+                                a(href= "#" id="overdue") Overdue
+                    p
+                        span#todoCount 0
+                        |  items total
+                    button#deleteAll Delete All
+        
+        section.loghistory 
+            .history 
+                h2 History 
+                li#log
+                button#clear Clear History 
             
-        ul.scroll
-            li#todoList
-        div
-            hr.counter
-            .counter-container
-                .dropdown
-                        button.dropbtn Filter
-                        .dropdown-content
-                            a(href="#" id="all") All
-                            a(href="#" id="rem") Pending
-                            a(href="#" id="com") Completed
-                p
-                    span#todoCount 0
-                    |  items total
-                button#deleteAll Delete All
+
 
     script(src='/js/todos.js')

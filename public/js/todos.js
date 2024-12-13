@@ -4,6 +4,12 @@ const todoCount = document.getElementById("todoCount");
 const addButton = document.querySelector(".btnAdd");
 const deleteButton = document.getElementById("deleteAll");
 const filterButtons = document.querySelectorAll(".dropdown-content a");
+const sortDateButton = document.getElementById("sortDate");
+
+let isSorted = false;
+const historyLog = [];
+const logElement = document.getElementById("log");
+const clearHistoryButton = document.getElementById("clear");
 
 
 document.addEventListener("DOMContentLoaded", async function () {
@@ -15,6 +21,7 @@ document.addEventListener("DOMContentLoaded", async function () {
         }
     });
     deleteButton.addEventListener("click", deleteAllTasks);
+    sortDateButton.addEventListener("click", toggleSort);
     filterButtons.forEach(button => {
         button.addEventListener("click", async function (e) {
             e.preventDefault();
@@ -34,28 +41,73 @@ async function addTask() {
     const newTask = todoInput.value.trim();
     let todoDate = document.getElementById("todoDate").value.trim();
     if (todoDate) {
-        todoDate = new Date(todoDate).toISOString().split("T")[0]; 
+        todoDate = new Date(todoDate).toISOString().split("T")[0];
     }
     if (newTask !== "") {
-        await fetch('/api/todos', {
+        const response = await fetch('/api/todos', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ text: newTask, date: todoDate || null})
+            body: JSON.stringify({ text: newTask, date: todoDate || null })
         });
-        todoInput.value = "";
-        document.getElementById("todoDate").value = "";
-        await displayTasks();
+
+        if (response.ok) {
+            const createdTask = await response.json(); // Assuming the backend returns the created task
+            addTaskToDOM(createdTask); // Add the task directly to the DOM
+            logAction(`Added task: "${newTask}"${todoDate ? ` with deadline ${todoDate}` : ""}`);
+            todoInput.value = "";
+            document.getElementById("todoDate").value = "";
+        }
     }
+}
+
+// Function to add a single task to the DOM
+function addTaskToDOM(task) {
+    const formattedDate = task.deadline
+        ? new Date(task.deadline).toISOString().split("T")[0]
+        : "No Deadline";
+
+    const listItem = document.createElement("li");
+    listItem.innerHTML = `
+        <div class="todo-container">
+            <input type="checkbox" class="todo-checkbox" id="input-${task.id}" ${
+        task.disabled ? "checked" : ""
+    }>
+            <p id="todo-${task.id}" class="${
+        task.disabled ? "disabled" : ""
+    }" onclick="editTask(${task.id})">${task.text}</p>
+            <span class="todo-date">${formattedDate}</span>
+            <button class="delete-btn" onclick="deleteTask(${task.id})">&times;</button>
+        </div>
+    `;
+
+    listItem.querySelector(".todo-checkbox").addEventListener("change", () =>
+        toggleTask(task.id)
+    );
+
+    todoList.appendChild(listItem);
+    todoCount.textContent = parseInt(todoCount.textContent) + 1;
 }
 
 async function displayTasks(filter="all") {
     const todos = await fetchTodos(); 
     todoList.innerHTML = ""; 
-    const filteredTodos = todos.filter(todo => {
-        if (filter === "rem") return !todo.disabled; 
-        if (filter === "com") return todo.disabled; 
+    let filteredTodos = todos.filter(todo => {
+        if (filter === "pending") return !todo.disabled; 
+        if (filter === "completed") return todo.disabled; 
+        if (filter === "overdue") {
+            const today = new Date();
+            const deadline = todo.deadline ? new Date(todo.deadline) : null;
+            return !todo.disabled && deadline && deadline < today; 
+        }
         return true; 
     });
+    if (isSorted) {
+        filteredTodos = filteredTodos.sort((a, b) => {
+            const dateA = a.deadline ? new Date(a.deadline) : new Date("9999-12-31");
+            const dateB = b.deadline ? new Date(b.deadline) : new Date("9999-12-31");
+            return dateA - dateB;
+        });
+    }
     filteredTodos.forEach(todo => {
         const formattedDate = todo.deadline
             ? new Date(todo.deadline).toISOString().split("T")[0]
@@ -72,7 +124,7 @@ async function displayTasks(filter="all") {
         ${
             formattedDate
                 ? `<span class="todo-date">${formattedDate}</span>` 
-                : ""
+                : `<span class="todo-date"> No Deadline </span>` 
         }
                 <button class="delete-btn" onclick="deleteTask(${todo.id})">&times;</button>
 
@@ -88,7 +140,10 @@ async function displayTasks(filter="all") {
 }
 
 async function deleteTask(id) {
+    const taskText = document.getElementById(`todo-${id}`).textContent;
     await fetch(`/api/todos/${id}`, { method: 'DELETE' });
+    logAction(`Deleted task: "${taskText}"`);
+
     await displayTasks();
 }
 
@@ -103,23 +158,60 @@ async function editTask(id) {
 
     inputElement.addEventListener("blur", async function () {
         const updatedText = inputElement.value.trim();
-        if (updatedText) {
+        if (updatedText!== existingText) {
             await fetch(`/api/todos/${id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ text: updatedText })
             });
         }
+        logAction(`Edited task from "${existingText}" to "${updatedText}"`);
         await displayTasks();
     });
 }
 
 async function toggleTask(id) {
+    const taskText = document.getElementById(`todo-${id}`).textContent;
+    const isCompleted = document.getElementById(`input-${id}`).checked;
     await fetch(`/api/todos/${id}`, { method: 'PUT' });
+    logAction(`${isCompleted ? "Completed" : "Reopened"} task: "${taskText}"`);
     await displayTasks();
 }
 
 async function deleteAllTasks() {
     await fetch('/api/todos', { method: 'DELETE' });
+    logAction("Deleted all tasks");
+
     await displayTasks();
 }
+
+
+function toggleSort() {
+    isSorted = !isSorted;
+    sortDateButton.textContent = isSorted ? "Unsort Date" : "Sort Date";
+    displayTasks(); 
+}
+
+
+function logAction(action) {
+    const timestamp = new Date().toLocaleString();
+    historyLog.push(`[${timestamp}] ${action}`);
+    updateHistoryUI();
+}
+
+function updateHistoryUI() {
+    logElement.innerHTML = "";
+    historyLog.forEach(entry => {
+        const logItem = document.createElement("li");
+        logItem.textContent = entry;
+        logElement.appendChild(logItem);
+    });
+}
+
+clearHistoryButton.addEventListener("click", () => {
+    historyLog.length = 0;
+    logAction("Cleared history");
+    updateHistoryUI();
+});
+
+updateHistoryUI();
