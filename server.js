@@ -1,6 +1,8 @@
 const express = require('express');
 const app = express();
-const data = require('./data'); // Import the data module for database operations
+const data = require('./data'); 
+const bcrypt = require('bcrypt'); 
+const session = require('express-session');
 
 app.set('view engine', 'pug');
 
@@ -10,17 +12,97 @@ app.use(express.static('public'));
 app.use(express.urlencoded({ extended: true }));
 app.use(express.json());
 
-// Render the homepage
-app.get('/', (req, res) => {
-    res.render('mainpage.pug', {
-        title: 'HomePage'
+app.use(
+    session({
+      secret: 'idonknowwhattoputinhere2024',
+      resave: false,
+      saveUninitialized: false,
+    })
+  );
+  
+const checkAuth = (req, res, next) => {
+    if (!req.session.userId) {
+        return res.redirect('/login');
+    }
+    next();
+};
+
+app.get('/', async (req, res) => {
+    if (!req.session.userId) {
+        return res.redirect('/login');
+    }
+    try {
+        res.render('mainpage', {
+            title: 'HomePage',
+            isLoggedIn: true,
+            
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Internal server error.');
+    }
+
+});
+
+
+
+app.post('/login', async (req, res) => {
+    const { email, password } = req.body;
+    try {
+        const user = await data.getUserByEmail(email);
+        if (!user) {
+          return res.send('Invalid email or password!');
+        }
+    
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+          return res.send('Invalid email or password!');
+        }
+    
+        req.session.userId = user.id;
+        res.redirect('/');
+      } catch (err) {
+        console.error(err);
+        res.status(500).send('Internal server error.');
+      }
+
+   
+});
+
+app.get('/login', (req, res) => {
+    res.render('login');
+});
+
+app.get('/signup', (req, res) => {
+    res.render('signup');
+});
+
+app.get('/logout', (req, res) => {
+    req.session.destroy((err) => {
+        if (err) {
+            console.error('Error during logout:', err);
+            return res.status(500).send('Internal server error.');
+        }
+        res.redirect('/login');
     });
 });
 
-// API: Get all to-dos
-app.get('/api/todos', async (req, res) => {
+
+app.post('/signup', async (req, res) => {
+    const { firstName, email, password } = req.body;
     try {
-        const todos = await data.getTodos();
+        const hashedPassword = await bcrypt.hash(password, 10);
+        await data.addUser(firstName, email, hashedPassword);
+        res.redirect('/login');
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Internal server error.');
+    }
+});
+
+app.get('/api/todos',checkAuth, async (req, res) => {
+    try {
+        const todos = await data.getTodos(req.session.userId);
         res.json(todos);
     } catch (err) {
         console.error(err);
@@ -28,14 +110,15 @@ app.get('/api/todos', async (req, res) => {
     }
 });
 
-// API: Add a new to-do
-app.post('/api/todos', async (req, res) => {
+app.post('/api/todos', checkAuth, async (req, res) => {
     const { text, date } = req.body;
+    console.log("Received Data:", { text, date }); // Log the incoming data
+
     if (!text) {
         return res.status(400).json({ error: 'Text is required' });
     }
     try {
-        const id = await data.addTodo(text, date|| null);
+        const id = await data.addTodo(req.session.userId, text, date|| null);
         res.status(201).json({ id, text, date:date ||null, disabled: false });
     } catch (err) {
         console.error(err);
@@ -43,7 +126,6 @@ app.post('/api/todos', async (req, res) => {
     }
 });
 
-// API: Toggle a to-do
 app.put('/api/todos/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
@@ -61,7 +143,6 @@ app.put('/api/todos/:id', async (req, res) => {
     }
 });
 
-// API: Edit a to-do
 app.patch('/api/todos/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     const { text } = req.body;
@@ -80,7 +161,6 @@ app.patch('/api/todos/:id', async (req, res) => {
     }
 });
 
-// API: Delete a specific to-do
 app.delete('/api/todos/:id', async (req, res) => {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) {
@@ -98,7 +178,6 @@ app.delete('/api/todos/:id', async (req, res) => {
     }
 });
 
-// API: Delete all to-dos
 app.delete('/api/todos', async (req, res) => {
     try {
         await data.deleteAllTodos();

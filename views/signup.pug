@@ -1,0 +1,19 @@
+extend layout_user_support
+
+block content
+    div.container
+      h1 Sign up
+      p.subtitle Sign up to continue
+      form(action="/signup", method="POST")
+        div.input-group
+          label(for="firstName") Name
+          input(type="text", name="firstName", placeholder="Enter your name", required)
+        div.input-group
+          label(for="email") Email
+          input(type="email", name="email", placeholder="Enter your email", required)
+        div.input-group
+          label(for="password") Password
+          input(type="password", name="password", placeholder="Enter your password", required)
+        button(type="submit") Sign up
+      p.redirect Already have an account? 
+        a(href="/login") Sign in

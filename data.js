@@ -14,45 +14,57 @@ var connPool = mysql.createPool({
 // later you can use connPool.awaitQuery(query, data) -- it will return a promise for the query results.
 
 
-// Add a new to-do
-async function addTodo(text, deadline) {
-    const query = `INSERT INTO todo (text, deadline) VALUES (?, ?)`;
-    const result = await connPool.awaitQuery(query, [text, deadline]);
+async function addTodo(user_id, text, deadline) {
+    const query = `INSERT INTO todos (user_id, text, deadline) VALUES (?, ?, ?)`;
+    const result = await connPool.awaitQuery(query, [user_id, text, deadline]);
     return result.insertId;
 }
 
-// Get all to-dos
 async function getTodos() {
-    const query = `SELECT * FROM todo`;
+    const query = `SELECT * FROM todos`;
     return await connPool.awaitQuery(query);
 }
 
-// Update a to-do (toggle its disabled state)
 async function toggleTodo(id) {
-    const query = `UPDATE todo SET disabled = NOT disabled WHERE id = ?`;
+    const query = `UPDATE todos SET disabled = NOT disabled WHERE id = ?`;
     const result = await connPool.awaitQuery(query, [id]);
     return result.affectedRows > 0;
 }
 
-// Edit a to-do
 async function editTodo(id, text) {
-    const query = `UPDATE todo SET text = ? WHERE id = ?`;
+    const query = `UPDATE todos SET text = ? WHERE id = ?`;
     const result = await connPool.awaitQuery(query, [text, id]);
     return result.affectedRows > 0;
 }
 
-// Delete a specific to-do
 async function deleteTodo(id) {
-    const query = `DELETE FROM todo WHERE id = ?`;
+    const query = `DELETE FROM todos WHERE id = ?`;
     const result = await connPool.awaitQuery(query, [id]);
     return result.affectedRows > 0;
 }
 
-// Delete all to-dos
 async function deleteAllTodos() {
-    const query = `DELETE FROM todo`;
+    const query = `DELETE FROM todos`;
     const result = await connPool.awaitQuery(query);
     return result.affectedRows > 0;
+}
+
+
+async function addUser(firstName, email, password) {
+    const query = `INSERT INTO users (first_name, email, password) VALUES (?, ?, ?)`;
+    await connPool.awaitQuery(query, [firstName, email, password]);
+}
+
+async function getUserByEmail(email) {
+    const query = `SELECT * FROM users WHERE email = ?`;
+    const results = await connPool.awaitQuery(query, [email]);
+    return results[0];
+  }
+
+async function getUserById(id) {
+    const query = `SELECT * FROM users WHERE id = ?`;
+    const results = await connPool.awaitQuery(query, [id]);
+return results[0]; 
 }
 
 module.exports = {
@@ -61,5 +73,8 @@ module.exports = {
     toggleTodo,
     editTodo,
     deleteTodo,
-    deleteAllTodos
+    deleteAllTodos,
+    addUser,
+    getUserByEmail,
+    getUserById
 };

@@ -33,8 +33,26 @@ document.addEventListener("DOMContentLoaded", async function () {
 });
 
 async function fetchTodos() {
-    const response = await fetch('/api/todos');
-    return await response.json();
+    
+    try {
+        const response = await fetch('/api/todos');
+        console.log("Response status:", response.status); // Log response status
+
+        if (!response.ok) {
+            // Log the response text for debugging
+            const errorText = await response.text();
+            console.error("Error fetching todos:", errorText);
+            throw new Error(`Failed to fetch todos: ${response.status}`);
+        }
+
+        return await response.json();
+    } catch (err) {
+        console.error("Fetch failed:", err.message);
+        throw err;
+    }
+    
+    // const response = await fetch('/api/todos');
+    // return await response.json();
 }
 
 async function addTask() {
@@ -43,6 +61,8 @@ async function addTask() {
     if (todoDate) {
         todoDate = new Date(todoDate).toISOString().split("T")[0];
     }
+    console.log("Task Data:", { text: newTask, date: todoDate }); // Log data to check
+
     if (newTask !== "") {
         const response = await fetch('/api/todos', {
             method: 'POST',
@@ -51,8 +71,8 @@ async function addTask() {
         });
 
         if (response.ok) {
-            const createdTask = await response.json(); // Assuming the backend returns the created task
-            addTaskToDOM(createdTask); // Add the task directly to the DOM
+            const createdTask = await response.json(); 
+            addTaskToDOM(createdTask); 
             logAction(`Added task: "${newTask}"${todoDate ? ` with deadline ${todoDate}` : ""}`);
             todoInput.value = "";
             document.getElementById("todoDate").value = "";
@@ -60,7 +80,6 @@ async function addTask() {
     }
 }
 
-// Function to add a single task to the DOM
 function addTaskToDOM(task) {
     const formattedDate = task.deadline
         ? new Date(task.deadline).toISOString().split("T")[0]
