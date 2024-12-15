@@ -1,0 +1,19 @@
+CREATE TABLE todos (
+    id INT NOT NULL AUTO_INCREMENT,
+    text VARCHAR(255) NOT NULL,
+    disabled TINYINT(1) DEFAULT 0,
+    deadline DATE ,
+    PRIMARY KEY (id)
+);
+
+
+CREATE TABLE users (
+    id INT NOT NULL AUTO_INCREMENT,
+    first_name VARCHAR(255) NOT NULL,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password VARCHAR(255) NOT NULL,
+    PRIMARY KEY (id)
+);
+
+ALTER TABLE todo ADD COLUMN user_id INT NOT NULL;
+ALTER TABLE todo ADD FOREIGN KEY (user_id) REFERENCES users(id);

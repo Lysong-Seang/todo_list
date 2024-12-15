@@ -36,7 +36,7 @@ async function fetchTodos() {
     
     try {
         const response = await fetch('/api/todos');
-        //console.log("Response status:", response.status);
+        console.log("Response status:", response.status);
 
         if (!response.ok) {
             const errorText = await response.text();
@@ -145,7 +145,7 @@ async function displayTasks(filter="all") {
 
             </div>
         `;
-
+        
         listItem.querySelector(".todo-checkbox").addEventListener("change", () =>
             toggleTask(todo.id)
         );
@@ -200,11 +200,13 @@ async function deleteAllTasks() {
     await displayTasks();
 }
 
+
 function toggleSort() {
     isSorted = !isSorted;
     sortDateButton.textContent = isSorted ? "Unsort Date" : "Sort Date";
     displayTasks(); 
 }
+
 
 function logAction(action) {
     const timestamp = new Date().toLocaleString();
